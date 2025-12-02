@@ -450,7 +450,7 @@
         <header class="card-header">
           <div class="title-group">
             <div class="title-main">슈로의 수인마을 탐험!!</div>
-            <div class="title-sub">장애물이 섞인 맵에서 슈로를 조작해 생존해 보세요.</div>
+            <div class="title-sub">장애물이 섞인 맵에서 뱀을 조작해 생존해 보세요.</div>
           </div>
         </header>
 
@@ -503,7 +503,6 @@
               화면 중앙의 버튼을 눌러 게임을 시작하세요.<br />
               PC: 방향키 · WASD, 모바일: 하단 가상 패드
             </div>
-            <!-- 클릭 시 startNewGame 호출 -->
             <button id="startBtnMain" class="overlay-start-btn" onclick="startNewGame()">게임 시작</button>
           </div>
         </div>
@@ -539,10 +538,9 @@
   </div>
 
   <script>
-    // ====== 스네이크 캐릭터 이미지 설정 ======
-    // 깃허브 리포지토리의 실제 경로/파일명에 맞게 수정 필요
+    // ====== 스네이크 캐릭터 이미지 설정 (.png) ======
     const snakeImageSources = {
-      shuro: '이미지/슈로.png',   // 머리
+      shuro: '이미지/슈로.png',   // 머리(첫 칸)
       tige:  '이미지/티그.png',
       beni:  '이미지/베니.png',
       lupo:  '이미지/루포.png',
@@ -593,7 +591,7 @@
     let isPaused = false;
     let hasStarted = false;
     let score = 0;
-    let tick = 0;                  // 애니메이션(흔들림)용 카운터
+    let tick = 0;                  // 흔들림 애니메이션용
 
     function randInt(min, max) {
       return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -781,13 +779,16 @@
       });
     });
 
+    // ===== 핵심: 몸 길이/이미지 유지한 채로 이동 =====
     function gameLoop() {
       if (isGameOver || isPaused || !hasStarted) return;
 
-      direction = nextDirection;
+      tick++;
+
       const head = snake[snake.length - 1];
       const newHeadPos = { x: head.x + direction.x, y: head.y + direction.y };
 
+      // 충돌 체크
       if (isOutOfBounds(newHeadPos)) {
         endGame('벽에 부딪힘');
         return;
@@ -805,27 +806,31 @@
         }
       }
 
-      // 새 머리: 기본적으로 기존 머리와 같은 캐릭터
-      let newHead = {
-        x: newHeadPos.x,
-        y: newHeadPos.y,
-        key: head.key || 'shuro'
-      };
+      const ateFood = posEquals(newHeadPos, food);
 
-      if (posEquals(newHeadPos, food)) {
-        // 먹이를 먹으면 추가되는 칸은 랜덤 캐릭터
-        newHead.key = randomBodyKey();
-        snake.push(newHead);
+      if (ateFood) {
+        // 먹으면: 기존 세그먼트의 key는 그대로, 새 세그먼트만 랜덤 캐릭터로 추가
+        const newSegment = {
+          x: newHeadPos.x,
+          y: newHeadPos.y,
+          key: randomBodyKey()
+        };
+        snake.push(newSegment);
         score += 10;
         scoreEl.textContent = score;
         spawnFood();
       } else {
-        // 일반 이동: 꼬리를 빼고 새 머리 추가
-        snake.shift();
-        snake.push(newHead);
+        // 일반 이동: key는 그대로, 좌표만 앞으로 당김
+        //  - 꼬리부터 머리 직전까지: 자기 앞 세그먼트 위치를 따라감
+        for (let i = 0; i < snake.length - 1; i++) {
+          snake[i].x = snake[i + 1].x;
+          snake[i].y = snake[i + 1].y;
+        }
+        //  - 머리는 새 위치로 이동
+        head.x = newHeadPos.x;
+        head.y = newHeadPos.y;
       }
 
-      tick++;   // 이동마다 애니메이션 프레임 증가
       draw();
     }
 
@@ -872,15 +877,14 @@
         const key = segment.key || 'shuro';
         const img = snakeImages[key];
 
-        // 간단한 좌우 흔들림: tick + 세그먼트마다 위상 차이를 둠
-        const amplitude = 2;                  // 최대 2px
+        const amplitude = 2;                  // 최대 2px 좌우
         const sway = Math.sin((tick * 0.6) + idx * 0.9) * amplitude;
 
         const drawX = segment.x * TILE_SIZE + sway;
         const drawY = segment.y * TILE_SIZE;
         const size  = TILE_SIZE;
 
-        if (img && img.complete) {
+        if (img && img.complete && img.naturalWidth > 0) {
           ctx.drawImage(img, drawX, drawY, size, size);
         } else {
           // 이미지 로딩 전 대비
