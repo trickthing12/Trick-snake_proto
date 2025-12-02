@@ -2,116 +2,422 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>랜덤 맵 스네이크 게임</title>
+  <title>랜덤 맵 스네이크</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #050711;
-      color: #f5f5f5;
+      background: radial-gradient(circle at top, #e6ffd2 0, #c7f0a6 40%, #a8d58b 100%);
       min-height: 100vh;
       display: flex;
-      flex-direction: column;
       align-items: center;
-      justify-content: flex-start;
+      justify-content: center;
+      color: #374151;
       padding: 16px;
-      gap: 12px;
     }
-    h1 {
-      font-size: 20px;
-      margin-top: 4px;
+
+    /* 전체 레이아웃: 좌측 메뉴 + 중앙 카드 */
+    .layout {
+      display: flex;
+      width: 100%;
+      max-width: 960px;
+      gap: 16px;
     }
-    #game-container {
+
+    /* 좌측 원형 메뉴 (실제 기능 없음, 분위기용) */
+    .sidebar {
+      width: 72px;
+      background: rgba(255,255,255,0.4);
+      border-radius: 24px;
+      padding: 12px 8px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 8px;
+      gap: 12px;
+      box-shadow: 0 4px 10px rgba(86,124,75,0.35);
     }
-    canvas {
-      border: 2px solid #444;
-      background: #111827;
-      touch-action: none;
+
+    .sidebar-title {
+      font-size: 12px;
+      color: #4b5563;
+      margin-bottom: 4px;
     }
-    #info {
+
+    .menu-circle {
+      width: 44px;
+      height: 44px;
+      border-radius: 999px;
+      background: #fef3c7;
+      border: 2px solid #facc15;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: #92400e;
+      text-align: center;
+    }
+
+    .menu-circle.secondary {
+      background: #dcfce7;
+      border-color: #4ade80;
+      color: #166534;
+    }
+
+    /* 중앙 팝업 카드 */
+    .card-wrapper {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 640px;
+      background: #fdfaf2;
+      border-radius: 32px;
+      border: 3px solid #9fdb7c;
+      box-shadow:
+        0 14px 30px rgba(46, 96, 40, 0.35),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.75);
+      padding: 18px 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      position: relative;
+    }
+
+    /* 카드 상단 바 (제목 + 닫기 버튼 느낌) */
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    .title-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .title-main {
+      font-size: 18px;
+      font-weight: 700;
+      color: #374151;
+    }
+
+    .title-sub {
+      font-size: 12px;
+      color: #6b7280;
+    }
+
+    .rank-pill {
+      padding: 4px 12px;
+      background: linear-gradient(90deg, #ffde7a, #ffb454);
+      border-radius: 999px;
+      border: 2px solid #facc15;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #7c2d12;
+    }
+
+    .rank-pill span {
       font-size: 14px;
     }
-    #info span {
-      margin-right: 8px;
+
+    .close-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      border: none;
+      background: #fef2f2;
+      color: #b91c1c;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
-    #controls {
+    .close-btn:active {
+      transform: translateY(1px);
+      filter: brightness(0.95);
+    }
+
+    /* 카드 내부: 상단 정보 + 캔버스 + 하단 정보/버튼 */
+    .card-content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.4fr);
+      gap: 16px;
+      align-items: center;
+    }
+
+    @media (max-width: 768px) {
+      .layout {
+        flex-direction: column;
+        align-items: center;
+      }
+      .sidebar {
+        flex-direction: row;
+        width: auto;
+        padding: 8px 12px;
+      }
+      .card-content {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    .info-panel {
       display: flex;
       flex-direction: column;
-      align-items: center;
-      margin-top: 8px;
-      gap: 4px;
-      user-select: none;
+      gap: 10px;
     }
-    .row {
+
+    .info-box {
+      background: #ecfccb;
+      border-radius: 16px;
+      padding: 10px 12px;
+      border: 1px solid #bef264;
+      font-size: 13px;
+      color: #4b5563;
+    }
+
+    .info-label {
+      font-size: 12px;
+      color: #6b7280;
+      margin-bottom: 4px;
+    }
+
+    .reward-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .reward-cell {
+      height: 32px;
+      border-radius: 10px;
+      background: #fef9c3;
+      border: 1px solid #fde68a;
+    }
+
+    .canvas-wrapper {
+      background: #d9f99d;
+      border-radius: 24px;
+      border: 2px solid #a3e635;
+      padding: 10px;
       display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    canvas {
+      border-radius: 18px;
+      border: 2px solid #6ee7b7;
+      background: #020617;
+      touch-action: none;
+      max-width: 100%;
+      height: auto;
+    }
+
+    /* 카드 하단: 점수/상태 + 버튼 */
+    .card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 6px;
+      gap: 8px;
+    }
+
+    #info {
+      font-size: 13px;
+      color: #374151;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    #info span {
+      margin-right: 2px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3px 10px;
+      background: #f9fafb;
+      border-radius: 999px;
+      border: 1px solid #e5e7eb;
+      font-size: 11px;
+      color: #4b5563;
       gap: 4px;
-    }
-    .btn {
-      width: 60px;
-      height: 60px;
-      border-radius: 12px;
-      border: none;
-      background: #1f2937;
-      color: #f9fafb;
-      font-size: 18px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    .btn:active {
-      transform: translateY(1px);
-      filter: brightness(0.9);
     }
 
     #restartBtn {
-      padding: 6px 12px;
-      border-radius: 999px;
+      padding: 8px 18px;
+      border-radius: 18px;
       border: none;
-      background: #2563eb;
-      color: #f9fafb;
-      font-size: 14px;
+      background: linear-gradient(90deg,#fb923c,#f97316);
+      color: #fefce8;
+      font-size: 13px;
+      font-weight: 700;
       cursor: pointer;
-      margin-left: 6px;
+      box-shadow: 0 4px 0 rgba(180,83,9,0.7);
     }
     #restartBtn:active {
       transform: translateY(1px);
-      filter: brightness(0.9);
+      box-shadow: 0 2px 0 rgba(180,83,9,0.8);
+      filter: brightness(0.96);
     }
 
-    /* 모바일일 때 가상 패드 여백 확보 */
+    /* 모바일용 가상 패드: 팝업 하단에 둥근 버튼 바 느낌 */
+    #controls {
+      margin-top: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      user-select: none;
+    }
+
+    .pad-shell {
+      background: #fef3c7;
+      border-radius: 20px;
+      border: 2px solid #facc15;
+      padding: 6px 10px 8px;
+      box-shadow: 0 4px 0 rgba(202,138,4,0.6);
+    }
+
+    .row {
+      display: flex;
+      gap: 6px;
+      justify-content: center;
+    }
+
+    .btn {
+      width: 54px;
+      height: 54px;
+      border-radius: 18px;
+      border: none;
+      background: #fde68a;
+      color: #92400e;
+      font-size: 20px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn:active {
+      transform: translateY(1px);
+      filter: brightness(0.95);
+    }
+
     @media (max-width: 600px) {
       canvas {
-        width: 320px;
-        height: 320px;
+        width: 300px;
+        height: 300px;
+      }
+      .btn {
+        width: 48px;
+        height: 48px;
       }
     }
   </style>
 </head>
 <body>
-  <h1>랜덤 맵 스네이크</h1>
-  <div id="game-container">
-    <canvas id="game" width="400" height="400"></canvas>
-    <div id="info">
-      <span>점수: <span id="score">0</span></span>
-      <span>상태: <span id="status">플레이 중</span></span>
-      <button id="restartBtn">다시 시작</button>
-    </div>
-  </div>
+  <div class="layout">
+    <!-- 왼쪽 둥근 메뉴 (분위기용) -->
+    <aside class="sidebar">
+      <div class="sidebar-title">메뉴</div>
+      <div class="menu-circle">정보</div>
+      <div class="menu-circle secondary">장비</div>
+      <div class="menu-circle">보드</div>
+    </aside>
 
-  <!-- 모바일 가상 패드 -->
-  <div id="controls">
-    <div class="row">
-      <button class="btn" data-dir="up">▲</button>
-    </div>
-    <div class="row">
-      <button class="btn" data-dir="left">◀</button>
-      <button class="btn" data-dir="down">▼</button>
-      <button class="btn" data-dir="right">▶</button>
-    </div>
+    <!-- 중앙 카드 팝업 -->
+    <main class="card-wrapper">
+      <section class="card">
+        <header class="card-header">
+          <div class="title-group">
+            <div class="title-main">랜덤 맵 스네이크</div>
+            <div class="title-sub">장애물이 섞인 맵에서 뱀을 조작해 생존해 보세요.</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <div class="rank-pill">
+              <span>★</span><span>★</span><span>★</span>
+            </div>
+            <button class="close-btn" type="button">✕</button>
+          </div>
+        </header>
+
+        <div class="card-content">
+          <!-- 좌측 정보 패널 -->
+          <div class="info-panel">
+            <div class="info-box">
+              <div class="info-label">추천 조작</div>
+              <div>PC: 방향키 · WASD<br>모바일: 하단 가상 패드</div>
+            </div>
+            <div class="info-box">
+              <div class="info-label">보상 목록 (연출용)</div>
+              <div class="reward-grid">
+                <div class="reward-cell"></div>
+                <div class="reward-cell"></div>
+                <div class="reward-cell"></div>
+                <div class="reward-cell"></div>
+                <div class="reward-cell"></div>
+                <div class="reward-cell"></div>
+                <div class="reward-cell"></div>
+                <div class="reward-cell"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 우측 캔버스 영역 -->
+          <div>
+            <div class="canvas-wrapper">
+              <canvas id="game" width="400" height="400"></canvas>
+            </div>
+
+            <footer class="card-footer">
+              <div id="info">
+                <span class="badge">
+                  점수 <strong id="score">0</strong>
+                </span>
+                <span class="badge">
+                  상태 <span id="status">플레이 중</span>
+                </span>
+              </div>
+              <button id="restartBtn">다시 시작</button>
+            </footer>
+
+            <!-- 모바일/PC 공용 가상 패드 -->
+            <div id="controls">
+              <div class="pad-shell">
+                <div class="row">
+                  <button class="btn" data-dir="up">▲</button>
+                </div>
+                <div class="row" style="margin-top:4px;">
+                  <button class="btn" data-dir="left">◀</button>
+                  <button class="btn" data-dir="down">▼</button>
+                  <button class="btn" data-dir="right">▶</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
   </div>
 
   <script>
@@ -179,7 +485,7 @@
         attempts++;
         const pos = { x: randInt(0, GRID_SIZE - 1), y: randInt(0, GRID_SIZE - 1) };
         if (cellOccupied(pos)) continue;
-        // 시작 위치 주변은 너무 막히지 않도록 제한 (원한다면 조정 가능)
+        // 시작 위치 주변은 너무 막히지 않도록 제한
         const distFromStart = Math.abs(pos.x - startX) + Math.abs(pos.y - startY);
         if (distFromStart < 4) continue;
         obstacles.push(pos);
@@ -298,11 +604,11 @@
 
     // ===== 렌더링 =====
     function draw() {
-      // 배경
+      // 배경(캔버스 내부)
       ctx.fillStyle = '#020617';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // 그리드 (선택 사항 – 연출용)
+      // 그리드
       ctx.strokeStyle = '#111827';
       ctx.lineWidth = 1;
       for (let i = 0; i <= GRID_SIZE; i++) {
@@ -344,4 +650,3 @@
   </script>
 </body>
 </html>
-
