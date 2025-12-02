@@ -450,7 +450,7 @@
         <header class="card-header">
           <div class="title-group">
             <div class="title-main">슈로의 수인마을 탐험!!</div>
-            <div class="title-sub">장애물이 섞인 맵에서 뱀을 조작해 생존해 보세요.</div>
+            <div class="title-sub">장애물이 섞인 맵에서 슈로를 조작해 생존해 보세요.</div>
           </div>
         </header>
 
@@ -539,6 +539,36 @@
   </div>
 
   <script>
+    // ====== 스네이크 캐릭터 이미지 설정 ======
+    // 깃허브 리포지토리의 실제 경로/파일명에 맞게 수정 필요
+    const snakeImageSources = {
+      shuro: '이미지/슈로.jpg',   // 머리
+      tige:  '이미지/티그.jpg',
+      beni:  '이미지/베니.jpg',
+      lupo:  '이미지/루포.jpg',
+      butter:'이미지/버터.jpg',
+      komi:  '이미지/코미.jpg',
+      momo:  '이미지/모모.jpg',
+      lion:  '이미지/리온.jpg',
+      bana:  '이미지/바나.jpg',
+      mago:  '이미지/마고.jpg',
+      mings: '이미지/밍스.jpg',
+      yumimi:'이미지/유미미.jpg',
+      chopa: '이미지/쵸파.jpg',
+    };
+
+    const BODY_KEYS = [
+      'tige','beni','lupo','butter','komi','momo',
+      'lion','bana','mago','mings','yumimi','chopa'
+    ];
+
+    const snakeImages = {};
+    Object.keys(snakeImageSources).forEach(key => {
+      const img = new Image();
+      img.src = snakeImageSources[key];
+      snakeImages[key] = img;
+    });
+
     // ===== 기본 설정 및 상태 =====
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d');
@@ -563,9 +593,15 @@
     let isPaused = false;
     let hasStarted = false;
     let score = 0;
+    let tick = 0;                  // 애니메이션(흔들림)용 카운터
 
     function randInt(min, max) {
       return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function randomBodyKey() {
+      const idx = randInt(0, BODY_KEYS.length - 1);
+      return BODY_KEYS[idx];
     }
 
     function posEquals(a, b) {
@@ -590,12 +626,14 @@
       const startX = Math.floor(GRID_SIZE / 2);
       const startY = Math.floor(GRID_SIZE / 2);
 
+      // 초기 한 칸: 슈로
       snake = [
-        { x: startX, y: startY },
+        { x: startX, y: startY, key: 'shuro' },
       ];
       direction = { x: 1, y: 0 };
       nextDirection = { x: 1, y: 0 };
       score = 0;
+      tick = 0;
       isGameOver = false;
       isPaused = false;
       scoreEl.textContent = score;
@@ -767,18 +805,27 @@
         }
       }
 
-      let newHead = { x: newHeadPos.x, y: newHeadPos.y };
+      // 새 머리: 기본적으로 기존 머리와 같은 캐릭터
+      let newHead = {
+        x: newHeadPos.x,
+        y: newHeadPos.y,
+        key: head.key || 'shuro'
+      };
 
       if (posEquals(newHeadPos, food)) {
+        // 먹이를 먹으면 추가되는 칸은 랜덤 캐릭터
+        newHead.key = randomBodyKey();
         snake.push(newHead);
         score += 10;
         scoreEl.textContent = score;
         spawnFood();
       } else {
+        // 일반 이동: 꼬리를 빼고 새 머리 추가
         snake.shift();
         snake.push(newHead);
       }
 
+      tick++;   // 이동마다 애니메이션 프레임 증가
       draw();
     }
 
@@ -794,6 +841,7 @@
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+      // 그리드
       ctx.strokeStyle = '#e5e7eb';
       ctx.lineWidth = 1;
       for (let i = 0; i <= GRID_SIZE; i++) {
@@ -809,22 +857,36 @@
         ctx.stroke();
       }
 
+      // 장애물
       ctx.fillStyle = '#9ca3af';
       obstacles.forEach(o => {
         ctx.fillRect(o.x * TILE_SIZE, o.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
       });
 
+      // 먹이
       ctx.fillStyle = '#f97316';
       ctx.fillRect(food.x * TILE_SIZE, food.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
 
-      ctx.fillStyle = '#22c55e';
-      snake.forEach(segment => {
-        ctx.fillRect(
-          segment.x * TILE_SIZE,
-          segment.y * TILE_SIZE,
-          TILE_SIZE,
-          TILE_SIZE
-        );
+      // 뱀: 각 세그먼트별 이미지 + 좌우 흔들림
+      snake.forEach((segment, idx) => {
+        const key = segment.key || 'shuro';
+        const img = snakeImages[key];
+
+        // 간단한 좌우 흔들림: tick + 세그먼트마다 위상 차이를 둠
+        const amplitude = 2;                  // 최대 2px
+        const sway = Math.sin((tick * 0.6) + idx * 0.9) * amplitude;
+
+        const drawX = segment.x * TILE_SIZE + sway;
+        const drawY = segment.y * TILE_SIZE;
+        const size  = TILE_SIZE;
+
+        if (img && img.complete) {
+          ctx.drawImage(img, drawX, drawY, size, size);
+        } else {
+          // 이미지 로딩 전 대비
+          ctx.fillStyle = '#22c55e';
+          ctx.fillRect(drawX, drawY, size, size);
+        }
       });
     }
 
