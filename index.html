@@ -195,32 +195,11 @@
       gap: 16px;
     }
 
-    /* 좌측: 큰 게임 시작 버튼 + 패드 */
+    /* 좌측: 패드만 남김 (게임 시작 버튼 제거) */
     .left-controls {
       display: flex;
       flex-direction: column;
       gap: 8px;
-    }
-
-    .big-start-btn {
-      width: 170px;
-      height: 64px;
-      border-radius: 22px;
-      border: none;
-      background: linear-gradient(90deg,#4ade80,#22c55e);
-      color: #064e3b;
-      font-size: 18px;
-      font-weight: 800;
-      cursor: pointer;
-      box-shadow: 0 5px 0 rgba(22,163,74,0.9);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .big-start-btn:active {
-      transform: translateY(1px);
-      box-shadow: 0 3px 0 rgba(22,163,74,0.95);
-      filter: brightness(0.97);
     }
 
     #controls {
@@ -261,7 +240,7 @@
       filter: brightness(0.95);
     }
 
-    /* 우측: 다시 시작 + 점수/상태 (확대) */
+    /* 우측: 다시 시작 + 점수/상태 */
     .restart-stack {
       display: flex;
       flex-direction: column;
@@ -471,7 +450,7 @@
         <header class="card-header">
           <div class="title-group">
             <div class="title-main">슈로의 수인마을 탐험!!</div>
-            <div class="title-sub">장애물이 섞인 맵에서 슈로을 조작해 생존해 보세요.</div>
+            <div class="title-sub">장애물이 섞인 맵에서 뱀을 조작해 생존해 보세요.</div>
           </div>
         </header>
 
@@ -483,9 +462,8 @@
 
             <div class="under-game">
               <div class="control-row">
-                <!-- 좌측: 큰 게임 시작 버튼 + 방향키 -->
+                <!-- 좌측: 가상 패드만 -->
                 <div class="left-controls">
-                  <button id="startBtnBottom" class="big-start-btn">게임 시작</button>
                   <div id="controls">
                     <div class="pad-shell">
                       <div class="row">
@@ -525,7 +503,8 @@
               화면 중앙의 버튼을 눌러 게임을 시작하세요.<br />
               PC: 방향키 · WASD, 모바일: 하단 가상 패드
             </div>
-            <button id="startBtnMain" class="overlay-start-btn">게임 시작</button>
+            <!-- 여기서 직접 startNewGame() 호출 -->
+            <button id="startBtnMain" class="overlay-start-btn" onclick="startNewGame()">게임 시작</button>
           </div>
         </div>
 
@@ -597,8 +576,6 @@
     const restartBtn = document.getElementById('restartBtn');
     const pauseBtn = document.getElementById('pauseBtn');
     const startOverlay = document.getElementById('startOverlay');
-    const startBtnMain = document.getElementById('startBtnMain');
-    const startBtnBottom = document.getElementById('startBtnBottom');
     const infoMenu = document.getElementById('infoMenu');
     const rewardMenu = document.getElementById('rewardMenu');
     const infoModal = document.getElementById('infoModal');
@@ -681,6 +658,7 @@
       food = pos;
     }
 
+    // 전역에서 호출 가능해야 하므로 function 선언 사용
     function startNewGame() {
       initGame();
       hasStarted = true;
@@ -745,9 +723,9 @@
       btn.addEventListener('touchstart', handler, { passive: false });
     });
 
-    if (startBtnMain)   startBtnMain.addEventListener('click', () => startNewGame());
-    if (startBtnBottom) startBtnBottom.addEventListener('click', () => startNewGame());
-    if (restartBtn)     restartBtn.addEventListener('click', () => startNewGame());
+    if (restartBtn) {
+      restartBtn.addEventListener('click', () => startNewGame());
+    }
 
     if (pauseBtn) {
       pauseBtn.addEventListener('click', () => {
