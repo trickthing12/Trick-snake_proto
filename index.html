@@ -538,365 +538,365 @@
   </div>
 
   <script>
-    // ====== 스네이크 캐릭터 이미지 설정 (.png) ======
-    const snakeImageSources = {
-      shuro: '이미지/슈로.png',   // 머리(첫 칸)
-      tige:  '이미지/티그.png',
-      beni:  '이미지/베니.png',
-      lupo:  '이미지/루포.png',
-      butter:'이미지/버터.png',
-      komi:  '이미지/코미.png',
-      momo:  '이미지/모모.png',
-      lion:  '이미지/리온.png',
-      bana:  '이미지/바나.png',
-      mago:  '이미지/마고.png',
-      mings: '이미지/밍스.png',
-      yumimi:'이미지/유미미.png',
-      chopa: '이미지/쵸피.png',
-    };
+  // ====== 스네이크 캐릭터 이미지 설정 (.png) ======
+  const snakeImageSources = {
+    shuro: '이미지/슈로.png',   // 머리(첫 칸)
+    tige:  '이미지/티그.png',
+    beni:  '이미지/베니.png',
+    lupo:  '이미지/루포.png',
+    butter:'이미지/버터.png',
+    komi:  '이미지/코미.png',
+    momo:  '이미지/모모.png',
+    lion:  '이미지/리온.png',
+    bana:  '이미지/바나.png',
+    mago:  '이미지/마고.png',
+    mings: '이미지/밍스.png',
+    yumimi:'이미지/유미미.png',
+    chopa: '이미지/쵸파.png',
+  };
 
-    const BODY_KEYS = [
-      'tige','beni','lupo','butter','komi','momo',
-      'lion','bana','mago','mings','yumimi','chopa'
+  const BODY_KEYS = [
+    'tige','beni','lupo','butter','komi','momo',
+    'lion','bana','mago','mings','yumimi','chopa'
+  ];
+
+  const snakeImages = {};
+  Object.keys(snakeImageSources).forEach(key => {
+    const img = new Image();
+    img.src = snakeImageSources[key];
+    snakeImages[key] = img;
+  });
+
+  // ===== 기본 설정 및 상태 =====
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const scoreEl = document.getElementById('score');
+  const statusEl = document.getElementById('status');
+  const restartBtn = document.getElementById('restartBtn');
+  const pauseBtn = document.getElementById('pauseBtn');
+  const startOverlay = document.getElementById('startOverlay');
+  const infoMenu = document.getElementById('infoMenu');
+  const rewardMenu = document.getElementById('rewardMenu');
+  const infoModal = document.getElementById('infoModal');
+  const rewardModal = document.getElementById('rewardModal');
+
+  const GRID_SIZE = 20;
+  const TILE_SIZE = canvas.width / GRID_SIZE;
+  const INITIAL_SPEED = 190;     // 느린 속도
+  const OBSTACLE_COUNT = 35;
+
+  let snake, direction, nextDirection, food, obstacles;
+  let gameInterval = null;
+  let isGameOver = false;
+  let isPaused = false;
+  let hasStarted = false;
+  let score = 0;
+  let tick = 0;                  // 흔들림 애니메이션용
+
+  function randInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  function randomBodyKey() {
+    const idx = randInt(0, BODY_KEYS.length - 1);
+    return BODY_KEYS[idx];
+  }
+
+  function posEquals(a, b) {
+    return a.x === b.x && a.y === b.y;
+  }
+
+  function isOutOfBounds(pos) {
+    return pos.x < 0 || pos.x >= GRID_SIZE || pos.y < 0 || pos.y >= GRID_SIZE;
+  }
+
+  function cellOccupied(pos) {
+    for (const s of snake || []) {
+      if (posEquals(s, pos)) return true;
+    }
+    for (const o of obstacles || []) {
+      if (posEquals(o, pos)) return true;
+    }
+    return false;
+  }
+
+  function initGame() {
+    const startX = Math.floor(GRID_SIZE / 2);
+    const startY = Math.floor(GRID_SIZE / 2);
+
+    // 초기 한 칸: 슈로
+    snake = [
+      { x: startX, y: startY, key: 'shuro' },
     ];
+    direction = { x: 1, y: 0 };
+    nextDirection = { x: 1, y: 0 };
+    score = 0;
+    tick = 0;
+    isGameOver = false;
+    isPaused = false;
+    scoreEl.textContent = score;
+    statusEl.textContent = '플레이 중';
 
-    const snakeImages = {};
-    Object.keys(snakeImageSources).forEach(key => {
-      const img = new Image();
-      img.src = snakeImageSources[key];
-      snakeImages[key] = img;
-    });
-
-    // ===== 기본 설정 및 상태 =====
-    const canvas = document.getElementById('game');
-    const ctx = canvas.getContext('2d');
-    const scoreEl = document.getElementById('score');
-    const statusEl = document.getElementById('status');
-    const restartBtn = document.getElementById('restartBtn');
-    const pauseBtn = document.getElementById('pauseBtn');
-    const startOverlay = document.getElementById('startOverlay');
-    const infoMenu = document.getElementById('infoMenu');
-    const rewardMenu = document.getElementById('rewardMenu');
-    const infoModal = document.getElementById('infoModal');
-    const rewardModal = document.getElementById('rewardModal');
-
-    const GRID_SIZE = 20;
-    const TILE_SIZE = canvas.width / GRID_SIZE;
-    const INITIAL_SPEED = 190;     // 느린 속도
-    const OBSTACLE_COUNT = 35;
-
-    let snake, direction, nextDirection, food, obstacles;
-    let gameInterval = null;
-    let isGameOver = false;
-    let isPaused = false;
-    let hasStarted = false;
-    let score = 0;
-    let tick = 0;                  // 흔들림 애니메이션용
-
-    function randInt(min, max) {
-      return Math.floor(Math.random() * (max - min + 1)) + min;
+    obstacles = [];
+    let attempts = 0;
+    while (obstacles.length < OBSTACLE_COUNT && attempts < OBSTACLE_COUNT * 30) {
+      attempts++;
+      const pos = { x: randInt(0, GRID_SIZE - 1), y: randInt(0, GRID_SIZE - 1) };
+      if (cellOccupied(pos)) continue;
+      const distFromStart = Math.abs(pos.x - startX) + Math.abs(pos.y - startY);
+      if (distFromStart < 4) continue;
+      obstacles.push(pos);
     }
 
-    function randomBodyKey() {
-      const idx = randInt(0, BODY_KEYS.length - 1);
-      return BODY_KEYS[idx];
-    }
+    spawnFood();
+    draw();
+  }
 
-    function posEquals(a, b) {
-      return a.x === b.x && a.y === b.y;
-    }
+  function spawnFood() {
+    let pos;
+    do {
+      pos = { x: randInt(0, GRID_SIZE - 1), y: randInt(0, GRID_SIZE - 1) };
+    } while (cellOccupied(pos));
+    food = pos;
+  }
 
-    function isOutOfBounds(pos) {
-      return pos.x < 0 || pos.x >= GRID_SIZE || pos.y < 0 || pos.y >= GRID_SIZE;
-    }
-
-    function cellOccupied(pos) {
-      for (const s of snake || []) {
-        if (posEquals(s, pos)) return true;
-      }
-      for (const o of obstacles || []) {
-        if (posEquals(o, pos)) return true;
-      }
-      return false;
-    }
-
-    function initGame() {
-      const startX = Math.floor(GRID_SIZE / 2);
-      const startY = Math.floor(GRID_SIZE / 2);
-
-      // 초기 한 칸: 슈로
-      snake = [
-        { x: startX, y: startY, key: 'shuro' },
-      ];
-      direction = { x: 1, y: 0 };
-      nextDirection = { x: 1, y: 0 };
-      score = 0;
-      tick = 0;
-      isGameOver = false;
-      isPaused = false;
-      scoreEl.textContent = score;
-      statusEl.textContent = '플레이 중';
-
-      obstacles = [];
-      let attempts = 0;
-      while (obstacles.length < OBSTACLE_COUNT && attempts < OBSTACLE_COUNT * 30) {
-        attempts++;
-        const pos = { x: randInt(0, GRID_SIZE - 1), y: randInt(0, GRID_SIZE - 1) };
-        if (cellOccupied(pos)) continue;
-        const distFromStart = Math.abs(pos.x - startX) + Math.abs(pos.y - startY);
-        if (distFromStart < 4) continue;
-        obstacles.push(pos);
-      }
-
-      spawnFood();
-      draw();
-    }
-
-    function spawnFood() {
-      let pos;
-      do {
-        pos = { x: randInt(0, GRID_SIZE - 1), y: randInt(0, GRID_SIZE - 1) };
-      } while (cellOccupied(pos));
-      food = pos;
-    }
-
-    // 전역에서 호출: 게임 시작 버튼 → 이 함수 실행
-    function startNewGame() {
-      try {
-        initGame();
-        hasStarted = true;
-        isPaused = false;
-        updatePauseButton();
-        if (gameInterval) clearInterval(gameInterval);
-        gameInterval = setInterval(gameLoop, INITIAL_SPEED);
-        hideStartOverlay();
-      } catch (e) {
-        alert('오류가 발생했습니다: ' + e.message);
-        console.error(e);
-      }
-    }
-
-    function hideStartOverlay() {
-      if (startOverlay) startOverlay.style.display = 'none';
-    }
-
-    function showStartOverlay() {
-      if (startOverlay) startOverlay.style.display = 'flex';
-      statusEl.textContent = '대기 중';
-    }
-
-    function updatePauseButton() {
-      if (!pauseBtn) return;
-      pauseBtn.textContent = isPaused ? '▶' : 'Ⅱ';
-    }
-
-    function setDirection(dir) {
-      if (!hasStarted || isGameOver) return;
-
-      if (dir === 'up' && direction.y !== 1) {
-        nextDirection = { x: 0, y: -1 };
-      } else if (dir === 'down' && direction.y !== -1) {
-        nextDirection = { x: 0, y: 1 };
-      } else if (dir === 'left' && direction.x !== 1) {
-        nextDirection = { x: -1, y: 0 };
-      } else if (dir === 'right' && direction.x !== -1) {
-        nextDirection = { x: 1, y: 0 };
-      }
-    }
-
-    window.addEventListener('keydown', (e) => {
-      const key = e.key;
-      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(key)) {
-        e.preventDefault();
-      }
-      if (key === 'ArrowUp' || key === 'w' || key === 'W') setDirection('up');
-      if (key === 'ArrowDown' || key === 's' || key === 'S') setDirection('down');
-      if (key === 'ArrowLeft' || key === 'a' || key === 'A') setDirection('left');
-      if (key === 'ArrowRight' || key === 'd' || key === 'D') setDirection('right');
-
-      if (key === ' ' && isGameOver) {
-        startNewGame();
-      }
-    });
-
-    const controlButtons = document.querySelectorAll('.btn');
-    controlButtons.forEach(btn => {
-      const dir = btn.getAttribute('data-dir');
-      const handler = (e) => {
-        e.preventDefault();
-        setDirection(dir);
-      };
-      btn.addEventListener('click', handler);
-      btn.addEventListener('touchstart', handler, { passive: false });
-    });
-
-    if (restartBtn) {
-      restartBtn.addEventListener('click', () => startNewGame());
-    }
-
-    if (pauseBtn) {
-      pauseBtn.addEventListener('click', () => {
-        if (!hasStarted || isGameOver) return;
-        isPaused = !isPaused;
-        updatePauseButton();
-        statusEl.textContent = isPaused ? '일시 정지' : '플레이 중';
-      });
-    }
-
-    function anyModalOpen() {
-      return (infoModal && infoModal.style.display === 'flex') ||
-             (rewardModal && rewardModal.style.display === 'flex');
-    }
-
-    function openModal(modal) {
-      if (!modal) return;
-      modal.style.display = 'flex';
-      if (hasStarted && !isGameOver) {
-        isPaused = true;
-        updatePauseButton();
-        statusEl.textContent = '일시 정지 (메뉴 열림)';
-      }
-    }
-
-    function closeModal(modal) {
-      if (!modal) return;
-      modal.style.display = 'none';
-      if (!anyModalOpen() && hasStarted && !isGameOver) {
-        isPaused = false;
-        updatePauseButton();
-        statusEl.textContent = '플레이 중';
-      }
-    }
-
-    if (infoMenu)   infoMenu.addEventListener('click', () => openModal(infoModal));
-    if (rewardMenu) rewardMenu.addEventListener('click', () => openModal(rewardModal));
-
-    document.querySelectorAll('.modal-close').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.getAttribute('data-close-modal');
-        const modal = document.getElementById(id);
-        if (modal) closeModal(modal);
-      });
-    });
-
-    // ===== 핵심: 몸 길이/이미지 유지한 채로 이동 =====
-    function gameLoop() {
-      if (isGameOver || isPaused || !hasStarted) return;
-
-      tick++;
-
-      const head = snake[snake.length - 1];
-      const newHeadPos = { x: head.x + direction.x, y: head.y + direction.y };
-
-      // 충돌 체크
-      if (isOutOfBounds(newHeadPos)) {
-        endGame('벽에 부딪힘');
-        return;
-      }
-      for (const o of obstacles) {
-        if (posEquals(o, newHeadPos)) {
-          endGame('장애물에 부딪힘');
-          return;
-        }
-      }
-      for (const s of snake) {
-        if (posEquals(s, newHeadPos)) {
-          endGame('몸에 부딪힘');
-          return;
-        }
-      }
-
-      const ateFood = posEquals(newHeadPos, food);
-
-      if (ateFood) {
-        // 먹으면: 기존 세그먼트의 key는 그대로, 새 세그먼트만 랜덤 캐릭터로 추가
-        const newSegment = {
-          x: newHeadPos.x,
-          y: newHeadPos.y,
-          key: randomBodyKey()
-        };
-        snake.push(newSegment);
-        score += 10;
-        scoreEl.textContent = score;
-        spawnFood();
-      } else {
-        // 일반 이동: key는 그대로, 좌표만 앞으로 당김
-        //  - 꼬리부터 머리 직전까지: 자기 앞 세그먼트 위치를 따라감
-        for (let i = 0; i < snake.length - 1; i++) {
-          snake[i].x = snake[i + 1].x;
-          snake[i].y = snake[i + 1].y;
-        }
-        //  - 머리는 새 위치로 이동
-        head.x = newHeadPos.x;
-        head.y = newHeadPos.y;
-      }
-
-      draw();
-    }
-
-    function endGame(reason) {
-      isGameOver = true;
-      statusEl.textContent = '게임 오버 - ' + reason;
-      if (gameInterval) clearInterval(gameInterval);
+  // 전역에서 호출: 게임 시작 버튼 → 이 함수 실행
+  function startNewGame() {
+    try {
+      initGame();
+      hasStarted = true;
       isPaused = false;
       updatePauseButton();
+      if (gameInterval) clearInterval(gameInterval);
+      gameInterval = setInterval(gameLoop, INITIAL_SPEED);
+      hideStartOverlay();
+    } catch (e) {
+      alert('오류가 발생했습니다: ' + e.message);
+      console.error(e);
     }
+  }
 
-    function draw() {
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+  function hideStartOverlay() {
+    if (startOverlay) startOverlay.style.display = 'none';
+  }
 
-      // 그리드
-      ctx.strokeStyle = '#e5e7eb';
-      ctx.lineWidth = 1;
-      for (let i = 0; i <= GRID_SIZE; i++) {
-        const p = i * TILE_SIZE;
-        ctx.beginPath();
-        ctx.moveTo(p, 0);
-        ctx.lineTo(p, canvas.height);
-        ctx.stroke();
+  function showStartOverlay() {
+    if (startOverlay) startOverlay.style.display = 'flex';
+    statusEl.textContent = '대기 중';
+  }
 
-        ctx.beginPath();
-        ctx.moveTo(0, p);
-        ctx.lineTo(canvas.width, p);
-        ctx.stroke();
+  function updatePauseButton() {
+    if (!pauseBtn) return;
+    pauseBtn.textContent = isPaused ? '▶' : 'Ⅱ';
+  }
+
+  function setDirection(dir) {
+    if (!hasStarted || isGameOver) return;
+
+    if (dir === 'up' && direction.y !== 1) {
+      nextDirection = { x: 0, y: -1 };
+    } else if (dir === 'down' && direction.y !== -1) {
+      nextDirection = { x: 0, y: 1 };
+    } else if (dir === 'left' && direction.x !== 1) {
+      nextDirection = { x: -1, y: 0 };
+    } else if (dir === 'right' && direction.x !== -1) {
+      nextDirection = { x: 1, y: 0 };
+    }
+  }
+
+  window.addEventListener('keydown', (e) => {
+    const key = e.key;
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(key)) {
+      e.preventDefault();
+    }
+    if (key === 'ArrowUp' || key === 'w' || key === 'W') setDirection('up');
+    if (key === 'ArrowDown' || key === 's' || key === 'S') setDirection('down');
+    if (key === 'ArrowLeft' || key === 'a' || key === 'A') setDirection('left');
+    if (key === 'ArrowRight' || key === 'd' || key === 'D') setDirection('right');
+
+    if (key === ' ' && isGameOver) {
+      startNewGame();
+    }
+  });
+
+  const controlButtons = document.querySelectorAll('.btn');
+  controlButtons.forEach(btn => {
+    const dir = btn.getAttribute('data-dir');
+    const handler = (e) => {
+      e.preventDefault();
+      setDirection(dir);
+    };
+    btn.addEventListener('click', handler);
+    btn.addEventListener('touchstart', handler, { passive: false });
+  });
+
+  if (restartBtn) {
+    restartBtn.addEventListener('click', () => startNewGame());
+  }
+
+  if (pauseBtn) {
+    pauseBtn.addEventListener('click', () => {
+      if (!hasStarted || isGameOver) return;
+      isPaused = !isPaused;
+      updatePauseButton();
+      statusEl.textContent = isPaused ? '일시 정지' : '플레이 중';
+    });
+  }
+
+  function anyModalOpen() {
+    return (infoModal && infoModal.style.display === 'flex') ||
+           (rewardModal && rewardModal.style.display === 'flex');
+  }
+
+  function openModal(modal) {
+    if (!modal) return;
+    modal.style.display = 'flex';
+    if (hasStarted && !isGameOver) {
+      isPaused = true;
+      updatePauseButton();
+      statusEl.textContent = '일시 정지 (메뉴 열림)';
+    }
+  }
+
+  function closeModal(modal) {
+    if (!modal) return;
+    modal.style.display = 'none';
+    if (!anyModalOpen() && hasStarted && !isGameOver) {
+      isPaused = false;
+      updatePauseButton();
+      statusEl.textContent = '플레이 중';
+    }
+  }
+
+  if (infoMenu)   infoMenu.addEventListener('click', () => openModal(infoModal));
+  if (rewardMenu) rewardMenu.addEventListener('click', () => openModal(rewardModal));
+
+  document.querySelectorAll('.modal-close').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-close-modal');
+      const modal = document.getElementById(id);
+      if (modal) closeModal(modal);
+    });
+  });
+
+  // ===== 핵심: 몸 길이/이미지 유지한 채로 이동 =====
+  function gameLoop() {
+    if (isGameOver || isPaused || !hasStarted) return;
+
+    // ★ 여기 한 줄이 빠져 있어서 방향이 안 바뀌고 있었음
+    direction = nextDirection;
+
+    tick++;
+
+    const head = snake[snake.length - 1];
+    const newHeadPos = { x: head.x + direction.x, y: head.y + direction.y };
+
+    // 충돌 체크
+    if (isOutOfBounds(newHeadPos)) {
+      endGame('벽에 부딪힘');
+      return;
+    }
+    for (const o of obstacles) {
+      if (posEquals(o, newHeadPos)) {
+        endGame('장애물에 부딪힘');
+        return;
       }
-
-      // 장애물
-      ctx.fillStyle = '#9ca3af';
-      obstacles.forEach(o => {
-        ctx.fillRect(o.x * TILE_SIZE, o.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-      });
-
-      // 먹이
-      ctx.fillStyle = '#f97316';
-      ctx.fillRect(food.x * TILE_SIZE, food.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-
-      // 뱀: 각 세그먼트별 이미지 + 좌우 흔들림
-      snake.forEach((segment, idx) => {
-        const key = segment.key || 'shuro';
-        const img = snakeImages[key];
-
-        const amplitude = 2;                  // 최대 2px 좌우
-        const sway = Math.sin((tick * 0.6) + idx * 0.9) * amplitude;
-
-        const drawX = segment.x * TILE_SIZE + sway;
-        const drawY = segment.y * TILE_SIZE;
-        const size  = TILE_SIZE;
-
-        if (img && img.complete && img.naturalWidth > 0) {
-          ctx.drawImage(img, drawX, drawY, size, size);
-        } else {
-          // 이미지 로딩 전 대비
-          ctx.fillStyle = '#22c55e';
-          ctx.fillRect(drawX, drawY, size, size);
-        }
-      });
+    }
+    for (const s of snake) {
+      if (posEquals(s, newHeadPos)) {
+        endGame('몸에 부딪힘');
+        return;
+      }
     }
 
-    // 최초 상태: 오버레이만 보이게
-    showStartOverlay();
+    const ateFood = posEquals(newHeadPos, food);
+
+    if (ateFood) {
+      // 먹으면: 기존 세그먼트의 key는 그대로, 새 세그먼트만 랜덤 캐릭터로 추가
+      const newSegment = {
+        x: newHeadPos.x,
+        y: newHeadPos.y,
+        key: randomBodyKey()
+      };
+      snake.push(newSegment);
+      score += 10;
+      scoreEl.textContent = score;
+      spawnFood();
+    } else {
+      // 일반 이동: key는 그대로, 좌표만 앞으로 당김
+      for (let i = 0; i < snake.length - 1; i++) {
+        snake[i].x = snake[i + 1].x;
+        snake[i].y = snake[i + 1].y;
+      }
+      head.x = newHeadPos.x;
+      head.y = newHeadPos.y;
+    }
+
+    draw();
+  }
+
+  function endGame(reason) {
+    isGameOver = true;
+    statusEl.textContent = '게임 오버 - ' + reason;
+    if (gameInterval) clearInterval(gameInterval);
+    isPaused = false;
     updatePauseButton();
+  }
+
+  function draw() {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // 그리드
+    ctx.strokeStyle = '#e5e7eb';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= GRID_SIZE; i++) {
+      const p = i * TILE_SIZE;
+      ctx.beginPath();
+      ctx.moveTo(p, 0);
+      ctx.lineTo(p, canvas.height);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(0, p);
+      ctx.lineTo(canvas.width, p);
+      ctx.stroke();
+    }
+
+    // 장애물
+    ctx.fillStyle = '#9ca3af';
+    obstacles.forEach(o => {
+      ctx.fillRect(o.x * TILE_SIZE, o.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+    });
+
+    // 먹이
+    ctx.fillStyle = '#f97316';
+    ctx.fillRect(food.x * TILE_SIZE, food.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+
+    // 뱀: 각 세그먼트별 이미지 + 좌우 흔들림
+    snake.forEach((segment, idx) => {
+      const key = segment.key || 'shuro';
+      const img = snakeImages[key];
+
+      const amplitude = 2;                  // 최대 2px 좌우
+      const sway = Math.sin((tick * 0.6) + idx * 0.9) * amplitude;
+
+      const drawX = segment.x * TILE_SIZE + sway;
+      const drawY = segment.y * TILE_SIZE;
+      const size  = TILE_SIZE;
+
+      if (img && img.complete && img.naturalWidth > 0) {
+        ctx.drawImage(img, drawX, drawY, size, size);
+      } else {
+        ctx.fillStyle = '#22c55e';
+        ctx.fillRect(drawX, drawY, size, size);
+      }
+    });
+  }
+
+  // 최초 상태: 오버레이만 보이게
+  showStartOverlay();
+  updatePauseButton();
   </script>
 </body>
 </html>
