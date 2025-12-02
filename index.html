@@ -117,7 +117,7 @@
       color: #6b7280;
     }
 
-    /* 상단 오른쪽 일시 정지 버튼으로 이동 */
+    /* 상단 오른쪽 일시 정지 버튼 */
     .pause-btn {
       position: absolute;
       right: 0;
@@ -561,8 +561,8 @@
   </div>
 
   <script>
+  document.addEventListener('DOMContentLoaded', () => {
     // ===== 이미지 로딩 설정 =====
-    // 실제 파일명/경로에 맞게 src 값을 수정하면 된다.
     const snakeImageSources = {
       shuro: '이미지/슈로.jpg',
       tige:  '이미지/티그.jpg',
@@ -608,8 +608,7 @@
 
     const GRID_SIZE = 20;
     const TILE_SIZE = canvas.width / GRID_SIZE; // 480 / 20 = 24px
-    // 기존보다 0.75배 느리게: 140 / 0.75 ≈ 187 → 약 190ms
-    const INITIAL_SPEED = 190;
+    const INITIAL_SPEED = 190; // 기존보다 0.75배 느리게
     const OBSTACLE_COUNT = 35;
 
     let snake, direction, nextDirection, food, obstacles;
@@ -696,17 +695,17 @@
     }
 
     function hideStartOverlay() {
-      startOverlay.style.display = 'none';
+      if (startOverlay) startOverlay.style.display = 'none';
     }
 
     function showStartOverlay() {
-      startOverlay.style.display = 'flex';
+      if (startOverlay) startOverlay.style.display = 'flex';
       statusEl.textContent = '대기 중';
     }
 
     // ===== 일시 정지 버튼 상태 반영 =====
     function updatePauseButton() {
-      // 일시 정지면 ▶, 아니면 Ⅱ
+      if (!pauseBtn) return;
       pauseBtn.textContent = isPaused ? '▶' : 'Ⅱ';
     }
 
@@ -752,24 +751,28 @@
     });
 
     // 하단 큰 게임 시작 버튼 & 중앙 오버레이 버튼 & 다시 시작 버튼
-    startBtnMain.addEventListener('click', () => startNewGame());
-    startBtnBottom.addEventListener('click', () => startNewGame());
-    restartBtn.addEventListener('click', () => startNewGame());
+    if (startBtnMain)   startBtnMain.addEventListener('click', () => startNewGame());
+    if (startBtnBottom) startBtnBottom.addEventListener('click', () => startNewGame());
+    if (restartBtn)     restartBtn.addEventListener('click', () => startNewGame());
 
     // 일시 정지 버튼
-    pauseBtn.addEventListener('click', () => {
-      if (!hasStarted || isGameOver) return;
-      isPaused = !isPaused;
-      updatePauseButton();
-      statusEl.textContent = isPaused ? '일시 정지' : '플레이 중';
-    });
+    if (pauseBtn) {
+      pauseBtn.addEventListener('click', () => {
+        if (!hasStarted || isGameOver) return;
+        isPaused = !isPaused;
+        updatePauseButton();
+        statusEl.textContent = isPaused ? '일시 정지' : '플레이 중';
+      });
+    }
 
     // ===== 사이드 메뉴 모달 (정보/보상) =====
     function anyModalOpen() {
-      return infoModal.style.display === 'flex' || rewardModal.style.display === 'flex';
+      return (infoModal && infoModal.style.display === 'flex') ||
+             (rewardModal && rewardModal.style.display === 'flex');
     }
 
     function openModal(modal) {
+      if (!modal) return;
       modal.style.display = 'flex';
       if (hasStarted && !isGameOver) {
         isPaused = true;
@@ -779,6 +782,7 @@
     }
 
     function closeModal(modal) {
+      if (!modal) return;
       modal.style.display = 'none';
       if (!anyModalOpen() && hasStarted && !isGameOver) {
         isPaused = false;
@@ -787,8 +791,8 @@
       }
     }
 
-    infoMenu.addEventListener('click', () => openModal(infoModal));
-    rewardMenu.addEventListener('click', () => openModal(rewardModal));
+    if (infoMenu)   infoMenu.addEventListener('click', () => openModal(infoModal));
+    if (rewardMenu) rewardMenu.addEventListener('click', () => openModal(rewardModal));
 
     document.querySelectorAll('.modal-close').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -823,18 +827,15 @@
         }
       }
 
-      // 기본적으로 머리와 같은 캐릭터를 따라가도록 설정
       let newHead = { x: newHeadPos.x, y: newHeadPos.y, key: head.key || 'shuro' };
 
       if (posEquals(newHeadPos, food)) {
-        // 먹이를 먹으면 새로운 칸은 랜덤 캐릭터로 설정
         newHead.key = randomBodyKey();
         snake.push(newHead);
         score += 10;
         scoreEl.textContent = score;
         spawnFood();
       } else {
-        // 일반 이동: 꼬리를 하나 제거하고 새 머리 추가
         snake.shift();
         snake.push(newHead);
       }
@@ -852,11 +853,9 @@
 
     // ===== 렌더링 =====
     function draw() {
-      // 보드 배경 흰색
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // 그리드 (옅은 회색)
       ctx.strokeStyle = '#e5e7eb';
       ctx.lineWidth = 1;
       for (let i = 0; i <= GRID_SIZE; i++) {
@@ -872,17 +871,14 @@
         ctx.stroke();
       }
 
-      // 장애물
       ctx.fillStyle = '#9ca3af';
       obstacles.forEach(o => {
         ctx.fillRect(o.x * TILE_SIZE, o.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
       });
 
-      // 먹이
       ctx.fillStyle = '#f97316';
       ctx.fillRect(food.x * TILE_SIZE, food.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
 
-      // 뱀: 각 세그먼트별 이미지 렌더링
       snake.forEach(segment => {
         const key = segment.key || 'shuro';
         const img = snakeImages[key];
@@ -895,7 +891,6 @@
             TILE_SIZE
           );
         } else {
-          // 로딩 전에는 임시 네모로 표시
           ctx.fillStyle = '#22c55e';
           ctx.fillRect(
             segment.x * TILE_SIZE,
@@ -910,6 +905,7 @@
     // 최초: 오버레이 표시, 캔버스는 비워둔다.
     showStartOverlay();
     updatePauseButton();
+  });
   </script>
 </body>
 </html>
