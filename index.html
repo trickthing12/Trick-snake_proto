@@ -117,10 +117,10 @@
       color: #6b7280;
     }
 
-    /* 상단 좌측 일시 정지 버튼 */
+    /* 상단 오른쪽 일시 정지 버튼으로 이동 */
     .pause-btn {
       position: absolute;
-      left: 0;
+      right: 0;
       top: 0;
       transform: translateY(-2px);
       width: 32px;
@@ -172,7 +172,7 @@
     canvas {
       border-radius: 18px;
       border: 2px solid #6ee7b7;
-      background: #020617;
+      background: #ffffff; /* 보드 배경 흰색 */
       touch-action: none;
       max-width: 100%;
       height: auto;
@@ -261,7 +261,7 @@
       filter: brightness(0.95);
     }
 
-    /* 우측: 다시 시작 + 점수/상태 (2배 정도 크게) */
+    /* 우측: 다시 시작 + 점수/상태 (확대) */
     .restart-stack {
       display: flex;
       flex-direction: column;
@@ -465,7 +465,7 @@
     <!-- 중앙 카드 -->
     <main class="card-wrapper">
       <section class="card">
-        <!-- 일시 정지 버튼 -->
+        <!-- 일시 정지 버튼 (우측 상단) -->
         <button type="button" class="pause-btn" id="pauseBtn">Ⅱ</button>
 
         <header class="card-header">
@@ -521,7 +521,7 @@
         <!-- 초기 게임 시작 오버레이 -->
         <div class="overlay" id="startOverlay">
           <div class="overlay-inner">
-            <div class="overlay-title">랜덤 맵 스네이크</div>
+            <div class="overlay-title">슈로의 수인마을 탐험!!</div>
             <div class="overlay-sub">
               화면 중앙의 버튼을 눌러 게임을 시작하세요.<br />
               PC: 방향키 · WASD, 모바일: 하단 가상 패드
@@ -535,11 +535,11 @@
           <div class="modal">
             <div class="modal-title">게임 정보</div>
             <div>
-              1. 방향키 또는 하단 가상 패드로 뱀의 이동 방향을 조작합니다.<br />
+              1. 방향키 또는 하단 가상 패드로 슈로의 이동 방향을 조작합니다.<br />
               2. 맵은 게임을 시작할 때마다 랜덤으로 생성되며, 장애물 배치도 함께 랜덤입니다.<br />
               3. 벽, 장애물, 자신의 몸에 부딪히면 게임 오버가 됩니다.<br />
-              4. 먹이를 먹을 때마다 점수가 올라가고, 뱀의 몸이 한 칸씩 길어집니다.<br />
-              5. 일시 정지 상태에서는 뱀이 움직이지 않습니다.
+              4. 먹이를 먹을 때마다 점수가 올라가고, 슈로의 줄이 한 칸씩 길어집니다.<br />
+              5. 일시 정지 상태에서는 슈로와 타이머가 모두 멈춥니다.
             </div>
             <button class="modal-close" data-close-modal="infoModal">닫기</button>
           </div>
@@ -550,9 +550,8 @@
           <div class="modal">
             <div class="modal-title">보상 정보</div>
             <div>
-              - 점수에 따라 가상의 코인 · 재료 등 다양한 보상을 받는 구조를 가정한 예시입니다.<br />
-              - 높은 점수를 기록할수록 더 상위 등급의 보상을 얻는 방향으로 확장할 수 있습니다.<br />
-              - 실제 게임 기획에서는 점수 구간별 보상 테이블을 설계해 사용할 수 있습니다.
+              - 실제 게임에서는 점수에 따라 가상의 코인 · 재료 등 다양한 보상을 받는 구조를 만들고자 합니다.<br />
+              - 현재는 구현되지 않았습니다.
             </div>
             <button class="modal-close" data-close-modal="rewardModal">닫기</button>
           </div>
@@ -562,6 +561,36 @@
   </div>
 
   <script>
+    // ===== 이미지 로딩 설정 =====
+    // 실제 파일명/경로에 맞게 src 값을 수정하면 된다.
+    const snakeImageSources = {
+      shuro: '이미지/슈로.jpg',
+      tige:  '이미지/티그.jpg',
+      beni:  '이미지/베니.jpg',
+      lupo:  '이미지/루포.jpg',
+      butter:'이미지/버터.jpg',
+      komi:  '이미지/코미.jpg',
+      momo:  '이미지/모모.jpg',
+      lion:  '이미지/리온.jpg',
+      bana:  '이미지/바나.jpg',
+      mago:  '이미지/마고.jpg',
+      mings: '이미지/밍스.jpg',
+      yumimi:'이미지/유미미.jpg',
+      chopa: '이미지/쵸파.jpg',
+    };
+
+    const snakeImages = {};
+    Object.keys(snakeImageSources).forEach(key => {
+      const img = new Image();
+      img.src = snakeImageSources[key];
+      snakeImages[key] = img;
+    });
+
+    const BODY_KEYS = [
+      'tige','beni','lupo','butter','komi','momo',
+      'lion','bana','mago','mings','yumimi','chopa'
+    ];
+
     // ===== 기본 설정 및 상태 =====
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d');
@@ -587,11 +616,16 @@
     let gameInterval = null;
     let isGameOver = false;
     let isPaused = false;
-    let hasStarted = false; // 최소 1회 이상 게임을 시작했는지
+    let hasStarted = false;
     let score = 0;
 
     function randInt(min, max) {
       return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function randomBodyKey() {
+      const idx = randInt(0, BODY_KEYS.length - 1);
+      return BODY_KEYS[idx];
     }
 
     function posEquals(a, b) {
@@ -615,10 +649,9 @@
     function initGame() {
       const startX = Math.floor(GRID_SIZE / 2);
       const startY = Math.floor(GRID_SIZE / 2);
+      // 최초 뱀 길이 1칸, 슈로 이미지 사용
       snake = [
-        { x: startX - 1, y: startY },
-        { x: startX,     y: startY },
-        { x: startX + 1, y: startY },
+        { x: startX, y: startY, key: 'shuro' },
       ];
       direction = { x: 1, y: 0 };
       nextDirection = { x: 1, y: 0 };
@@ -718,7 +751,7 @@
       btn.addEventListener('touchstart', handler, { passive: false });
     });
 
-    // 하단 큰 게임 시작 버튼 & 중앙 오버레이 버튼 → 동일 로직
+    // 하단 큰 게임 시작 버튼 & 중앙 오버레이 버튼 & 다시 시작 버튼
     startBtnMain.addEventListener('click', () => startNewGame());
     startBtnBottom.addEventListener('click', () => startNewGame());
     restartBtn.addEventListener('click', () => startNewGame());
@@ -771,33 +804,39 @@
 
       direction = nextDirection;
       const head = snake[snake.length - 1];
-      const newHead = { x: head.x + direction.x, y: head.y + direction.y };
+      const newHeadPos = { x: head.x + direction.x, y: head.y + direction.y };
 
-      if (isOutOfBounds(newHead)) {
+      if (isOutOfBounds(newHeadPos)) {
         endGame('벽에 부딪힘');
         return;
       }
       for (const o of obstacles) {
-        if (posEquals(o, newHead)) {
+        if (posEquals(o, newHeadPos)) {
           endGame('장애물에 부딪힘');
           return;
         }
       }
       for (const s of snake) {
-        if (posEquals(s, newHead)) {
+        if (posEquals(s, newHeadPos)) {
           endGame('몸에 부딪힘');
           return;
         }
       }
 
-      snake.push(newHead);
+      // 기본적으로 머리와 같은 캐릭터를 따라가도록 설정
+      let newHead = { x: newHeadPos.x, y: newHeadPos.y, key: head.key || 'shuro' };
 
-      if (posEquals(newHead, food)) {
+      if (posEquals(newHeadPos, food)) {
+        // 먹이를 먹으면 새로운 칸은 랜덤 캐릭터로 설정
+        newHead.key = randomBodyKey();
+        snake.push(newHead);
         score += 10;
         scoreEl.textContent = score;
         spawnFood();
       } else {
+        // 일반 이동: 꼬리를 하나 제거하고 새 머리 추가
         snake.shift();
+        snake.push(newHead);
       }
 
       draw();
@@ -813,10 +852,12 @@
 
     // ===== 렌더링 =====
     function draw() {
-      ctx.fillStyle = '#020617';
+      // 보드 배경 흰색
+      ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      ctx.strokeStyle = '#111827';
+      // 그리드 (옅은 회색)
+      ctx.strokeStyle = '#e5e7eb';
       ctx.lineWidth = 1;
       for (let i = 0; i <= GRID_SIZE; i++) {
         const p = i * TILE_SIZE;
@@ -831,25 +872,42 @@
         ctx.stroke();
       }
 
-      ctx.fillStyle = '#4b5563';
+      // 장애물
+      ctx.fillStyle = '#9ca3af';
       obstacles.forEach(o => {
         ctx.fillRect(o.x * TILE_SIZE, o.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
       });
 
+      // 먹이
       ctx.fillStyle = '#f97316';
       ctx.fillRect(food.x * TILE_SIZE, food.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
 
-      snake.forEach((s, idx) => {
-        if (idx === snake.length - 1) {
-          ctx.fillStyle = '#22c55e';
+      // 뱀: 각 세그먼트별 이미지 렌더링
+      snake.forEach(segment => {
+        const key = segment.key || 'shuro';
+        const img = snakeImages[key];
+        if (img && img.complete) {
+          ctx.drawImage(
+            img,
+            segment.x * TILE_SIZE,
+            segment.y * TILE_SIZE,
+            TILE_SIZE,
+            TILE_SIZE
+          );
         } else {
-          ctx.fillStyle = '#16a34a';
+          // 로딩 전에는 임시 네모로 표시
+          ctx.fillStyle = '#22c55e';
+          ctx.fillRect(
+            segment.x * TILE_SIZE,
+            segment.y * TILE_SIZE,
+            TILE_SIZE,
+            TILE_SIZE
+          );
         }
-        ctx.fillRect(s.x * TILE_SIZE, s.y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
       });
     }
 
-    // 최초에는 오버레이만 띄워두고, 캔버스는 비워둔다.
+    // 최초: 오버레이 표시, 캔버스는 비워둔다.
     showStartOverlay();
     updatePauseButton();
   </script>
