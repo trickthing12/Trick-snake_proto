@@ -172,7 +172,7 @@
     canvas {
       border-radius: 18px;
       border: 2px solid #6ee7b7;
-      background: #ffffff; /* 보드 배경 흰색 */
+      background: #ffffff;
       touch-action: none;
       max-width: 100%;
       height: auto;
@@ -471,14 +471,13 @@
         <header class="card-header">
           <div class="title-group">
             <div class="title-main">슈로의 수인마을 탐험!!</div>
-            <div class="title-sub">장애물이 섞인 맵에서 뱀을 조작해 생존해 보세요.</div>
+            <div class="title-sub">장애물이 섞인 맵에서 슈로을 조작해 생존해 보세요.</div>
           </div>
         </header>
 
         <div class="card-content">
           <div class="game-column">
             <div class="canvas-wrapper">
-              <!-- 캔버스 크기: 480×480 -->
               <canvas id="game" width="480" height="480"></canvas>
             </div>
 
@@ -561,7 +560,6 @@
   </div>
 
   <script>
-  document.addEventListener('DOMContentLoaded', () => {
     // ===== 이미지 로딩 설정 =====
     const snakeImageSources = {
       shuro: '이미지/슈로.jpg',
@@ -607,8 +605,8 @@
     const rewardModal = document.getElementById('rewardModal');
 
     const GRID_SIZE = 20;
-    const TILE_SIZE = canvas.width / GRID_SIZE; // 480 / 20 = 24px
-    const INITIAL_SPEED = 190; // 기존보다 0.75배 느리게
+    const TILE_SIZE = canvas.width / GRID_SIZE;
+    const INITIAL_SPEED = 190;
     const OBSTACLE_COUNT = 35;
 
     let snake, direction, nextDirection, food, obstacles;
@@ -648,7 +646,7 @@
     function initGame() {
       const startX = Math.floor(GRID_SIZE / 2);
       const startY = Math.floor(GRID_SIZE / 2);
-      // 최초 뱀 길이 1칸, 슈로 이미지 사용
+
       snake = [
         { x: startX, y: startY, key: 'shuro' },
       ];
@@ -672,7 +670,7 @@
       }
 
       spawnFood();
-      draw(); // 초기 프레임
+      draw();
     }
 
     function spawnFood() {
@@ -683,7 +681,6 @@
       food = pos;
     }
 
-    // ===== 게임 시작 / 재시작 =====
     function startNewGame() {
       initGame();
       hasStarted = true;
@@ -703,13 +700,11 @@
       statusEl.textContent = '대기 중';
     }
 
-    // ===== 일시 정지 버튼 상태 반영 =====
     function updatePauseButton() {
       if (!pauseBtn) return;
       pauseBtn.textContent = isPaused ? '▶' : 'Ⅱ';
     }
 
-    // ===== 입력 처리 =====
     function setDirection(dir) {
       if (!hasStarted || isGameOver) return;
 
@@ -750,12 +745,10 @@
       btn.addEventListener('touchstart', handler, { passive: false });
     });
 
-    // 하단 큰 게임 시작 버튼 & 중앙 오버레이 버튼 & 다시 시작 버튼
     if (startBtnMain)   startBtnMain.addEventListener('click', () => startNewGame());
     if (startBtnBottom) startBtnBottom.addEventListener('click', () => startNewGame());
     if (restartBtn)     restartBtn.addEventListener('click', () => startNewGame());
 
-    // 일시 정지 버튼
     if (pauseBtn) {
       pauseBtn.addEventListener('click', () => {
         if (!hasStarted || isGameOver) return;
@@ -765,7 +758,6 @@
       });
     }
 
-    // ===== 사이드 메뉴 모달 (정보/보상) =====
     function anyModalOpen() {
       return (infoModal && infoModal.style.display === 'flex') ||
              (rewardModal && rewardModal.style.display === 'flex');
@@ -802,7 +794,6 @@
       });
     });
 
-    // ===== 게임 루프 =====
     function gameLoop() {
       if (isGameOver || isPaused || !hasStarted) return;
 
@@ -851,7 +842,6 @@
       updatePauseButton();
     }
 
-    // ===== 렌더링 =====
     function draw() {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -902,10 +892,9 @@
       });
     }
 
-    // 최초: 오버레이 표시, 캔버스는 비워둔다.
+    // 최초 상태 세팅
     showStartOverlay();
     updatePauseButton();
-  });
   </script>
 </body>
 </html>
