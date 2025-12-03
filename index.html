@@ -542,7 +542,7 @@
         <header class="card-header">
           <div class="title-group">
             <div class="title-main">슈로의 수인마을 탐험!!</div>
-            <div class="title-sub">장애물이 있는 숲에서 슈로가 고기를 찾을 수 있게 도와주세요.</div>
+            <div class="title-sub">수인 숲에서 슈로를 조작해 고기를 찾아 보세요.</div>
           </div>
         </header>
 
@@ -692,6 +692,21 @@
             <button class="modal-close" data-close-modal="rewardModal">닫기</button>
           </div>
         </div>
+
+        <!-- 게임 클리어 모달 -->
+        <div class="modal-backdrop" id="clearModal">
+          <div class="modal">
+            <div class="modal-title">게임 클리어!</div>
+            <div style="font-size:13px; color:#4b5563; margin-top:4px;">
+              축하합니다! 점수 300점을 달성했습니다.<br />
+              다시 도전하려면 아래 버튼을 눌러 주세요.
+            </div>
+            <button id="clearRestartBtn" class="modal-close" style="margin-top:12px;">
+              다시 시작
+            </button>
+          </div>
+        </div>
+
       </section>
     </main>
   </div>
@@ -747,6 +762,9 @@
     const rewardTabButtons = document.querySelectorAll('.reward-tab-btn');
     const dailyRewardPanel = document.getElementById('dailyRewardPanel');
     const achvRewardPanel = document.getElementById('achvRewardPanel');
+
+    const clearModal = document.getElementById('clearModal');
+    const clearRestartBtn = document.getElementById('clearRestartBtn');
 
     const GRID_SIZE = 20;
     const TILE_SIZE = canvas.width / GRID_SIZE;
@@ -805,7 +823,6 @@
         score200Cleared = localStorage.getItem('shuro_score_200') === '1';
         score300Cleared = localStorage.getItem('shuro_score_300') === '1';
       } catch (e) {
-        // localStorage 사용 불가 환경에서는 그냥 세션 기준
         dailyPlayCleared = false;
         score100Cleared = false;
         score200Cleared = false;
@@ -825,7 +842,7 @@
         }
         localStorage.setItem('shuro_daily_play_date', today);
       } catch (e) {
-        // localStorage 실패 시 그냥 세션 기준 1회 처리
+        // localStorage 실패 시 세션 기준
       }
       dailyPlayCleared = true;
       updateQuestUI();
@@ -846,7 +863,6 @@
           localStorage.setItem('shuro_score_300', '1');
         }
       } catch (e) {
-        // localStorage 실패 시 세션 기준으로만 관리
         if (!score100Cleared && score >= 100) score100Cleared = true;
         if (!score200Cleared && score >= 200) score200Cleared = true;
         if (!score300Cleared && score >= 300) score300Cleared = true;
@@ -948,6 +964,9 @@
     // 전역에서 호출: 게임 시작
     function startNewGame() {
       try {
+        // 클리어 모달 열려 있으면 닫기
+        if (clearModal) clearModal.style.display = 'none';
+
         initGame();
         hasStarted = true;
         isPaused = false;
@@ -1066,7 +1085,7 @@
     function openModal(modal, type) {
       if (!modal) return;
 
-      // 다른 모달은 항상 닫기 → 겹쳐보이지 않도록
+      // 다른 모달은 항상 닫기
       if (infoModal) infoModal.style.display = 'none';
       if (rewardModal) rewardModal.style.display = 'none';
 
@@ -1125,6 +1144,11 @@
       startBtnMain.addEventListener('click', startNewGame);
     }
 
+    // 클리어 모달의 다시 시작 버튼
+    if (clearRestartBtn) {
+      clearRestartBtn.addEventListener('click', startNewGame);
+    }
+
     // ===== 핵심: 몸 길이/이미지 유지한 채로 이동 =====
     function gameLoop() {
       if (isGameOver || isPaused || !hasStarted) return;
@@ -1171,6 +1195,12 @@
         // 점수 기반 업적 체크
         checkScoreQuests();
 
+        // 게임 클리어 조건: 300점 이상
+        if (score >= 300) {
+          clearGame();
+          return;
+        }
+
         spawnFood();
       } else {
         // 일반 이동: key는 그대로, 좌표만 앞으로 당김
@@ -1191,6 +1221,19 @@
       if (gameInterval) clearInterval(gameInterval);
       isPaused = false;
       updatePauseButton();
+    }
+
+    // 게임 클리어 처리
+    function clearGame() {
+      isGameOver = true;
+      statusEl.textContent = '게임 클리어!';
+      if (gameInterval) clearInterval(gameInterval);
+      isPaused = false;
+      updatePauseButton();
+
+      if (clearModal) {
+        clearModal.style.display = 'flex';
+      }
     }
 
     function draw() {
